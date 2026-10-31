@@ -14,10 +14,11 @@ st.write(
     "working hours, or IT guidelines!"
 )
 
-api_key = st.sidebar.text_input(
-    "Enter Groq API Key",
-    type="password"
-)
+# Get the API key securely from Streamlit Secrets
+api_key = st.secrets["GROQ_API_KEY"]
+
+# Connect to Groq
+client = Groq(api_key=api_key)
 
 company_knowledge = """
 - Working Hours: 9:00 AM to 5:00 PM, Monday to Friday.
@@ -35,33 +36,31 @@ company_knowledge = """
   channel on Slack.
 """
 
-if api_key:
-    client = Groq(api_key=api_key)
+user_query = st.chat_input(
+    "Ask a question about company policies..."
+)
 
-    user_query = st.chat_input(
-        "Ask a question about company policies..."
-    )
+if user_query:
+    with st.chat_message("user"):
+        st.write(user_query)
 
-    if user_query:
-        with st.chat_message("user"):
-            st.write(user_query)
+    system_prompt = f"""
+    You are a helpful internal corporate assistant.
 
-        system_prompt = f"""
-        You are a helpful internal corporate assistant.
+    Use ONLY the following company knowledge base
+    to answer questions accurately.
 
-        Use ONLY the following company knowledge base
-        to answer questions accurately.
+    If the answer is not available, say you don't know
+    and advise the employee to contact HR.
 
-        If the answer is not available, say you don't know
-        and advise the employee to contact HR.
+    Knowledge Base:
+    {company_knowledge}
+    """
 
-        Knowledge Base:
-        {company_knowledge}
-        """
+    with st.chat_message("assistant"):
+        with st.spinner("Agent is checking company policies..."):
 
-        with st.chat_message("assistant"):
-            with st.spinner("Agent is checking company policies..."):
-
+            try:
                 response = client.chat.completions.create(
                     model="openai/gpt-oss-120b",
                     messages=[
@@ -80,5 +79,5 @@ if api_key:
                 answer = response.choices[0].message.content
                 st.write(answer)
 
-else:
-    st.info("🔑 Please enter your Groq API key in the sidebar.")
+            except Exception as e:
+                st.error(f"Unable to get a response: {e}")
